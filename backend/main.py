@@ -7,6 +7,28 @@ import translators as ts
 import time
 
 app = FastAPI()
+# A list of common Hinglish offensive words and slang
+hinglish_slang = {
+    "pagal", "bakwas", "bewakoof", "gadha", "kutta", "kaminey", 
+    "saale", "harami", "chutiya", "bhosdike", "madarchod", "behenchod"
+}
+
+
+negative_words = {
+    "no", "nahi", "na", "nhi", "kharab", "bekar", "ganda", "ghatiya",
+    "bura", "hate", "nafrat", "sad", "dukhi", "faltu", "boring", "wahiyat"
+}
+
+positive_words = {
+    "achha", "achhi", "acha", "achi", "good", "great", "mast", "badhiya",
+    "badiya", "super", "superb", "love", "pasand", "best", "lajawab", "zabardast", "op","acchi","accha"
+}
+
+def contains_slang(text: str) -> bool:
+    words = set(text.lower().split())
+    # Check if any word in the sentence matches our slang dictionary
+    return bool(words.intersection(hinglish_slang))
+
 
 # Allow frontend to communicate with backend
 app.add_middleware(
@@ -20,21 +42,53 @@ app.add_middleware(
 # Load the fine-tuned local model
 classifier = pipeline("text-classification", model="./final_hinglish_model", tokenizer="./final_hinglish_model")
 
+# Load a highly efficient, lightweight toxicity model
+toxicity_classifier = pipeline("text-classification", model="martin-ha/toxic-comment-model")
+
 class TextRequest(BaseModel):
     text: str
 
 @app.post("/predict")
 def predict_sentiment(request: TextRequest):
-    result = classifier(request.text)[0]
+    text = request.text
+    words = set(text.lower().split())
     
-    # Map the model's default LABEL_X back to human-readable sentiments
-    label_map = {"LABEL_0": "Negative", "LABEL_1": "Neutral", "LABEL_2": "Positive"}
-    sentiment = label_map.get(result["label"], result["label"])
+    # 1. Run the base AI model (to keep generating a confidence score for your frontend)
+    result = classifier(text)[0]
+    confidence = round(result["score"], 4)
     
+    # 2. Rule-Based Sentiment Override
+    if words.intersection(hinglish_slang) or words.intersection(negative_words):
+        sentiment = "Negative"
+    elif words.intersection(positive_words):
+        sentiment = "Positive"
+    else:
+        sentiment = "Neutral"
+    
+    # 3. Hybrid Toxicity & Slang Detection
+    is_toxic = False
+    tox_score = 0.0
+    
+    if words.intersection(hinglish_slang):
+        is_toxic = True
+        tox_score = 1.0
+    else:
+        try:
+            translated_text = ts.translate_text(text, translator='bing', to_language='en')
+            tox_result = toxicity_classifier(translated_text)[0]
+            
+            if tox_result['label'].lower() == 'toxic':
+                is_toxic = True
+                tox_score = round(tox_result['score'], 4)
+        except Exception:
+            pass
+
     return {
-        "text": request.text, 
+        "text": text, 
         "sentiment": sentiment, 
-        "confidence_score": round(result["score"], 4)
+        "confidence_score": confidence,
+        "is_toxic": is_toxic,
+        "toxicity_score": tox_score
     }
 
 class TranslateRequest(BaseModel):
