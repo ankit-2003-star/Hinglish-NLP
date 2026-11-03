@@ -5,6 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from deep_translator import GoogleTranslator
 import translators as ts
 import time
+import whisper
+import shutil
+import os
+from fastapi import UploadFile, File
+
+
+whisper_model = whisper.load_model("small")
 
 app = FastAPI()
 # A list of common Hinglish offensive words and slang
@@ -16,7 +23,7 @@ hinglish_slang = {
 
 negative_words = {
     "no", "nahi", "na", "nhi", "kharab", "bekar", "ganda", "ghatiya",
-    "bura", "hate", "nafrat", "sad", "dukhi", "faltu", "boring", "wahiyat"
+    "bura", "hate", "nafrat", "sad", "dukhi", "faltu", "boring", "wahiyat","bad"
 }
 
 positive_words = {
@@ -123,3 +130,29 @@ def translate_text(request: TranslateRequest):
             
         except Exception as e:
             return {"error": "Network blocked. Please disconnect and reconnect your Wi-Fi/Hotspot to reset your IP address."}
+
+
+@app.post("/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)):
+    temp_file_path = f"temp_{file.filename}"
+    with open(temp_file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    try:
+        # 1. language="en" forces the English alphabet to prevent Spanish hallucinations
+        # 2. initial_prompt guides the model to expect Romanized Hindi/Hinglish phrasing
+        # 3. condition_on_previous_text=False prevents repetitive loops on short audio
+        result = whisper_model.transcribe(
+            temp_file_path,
+            language="en",
+            initial_prompt="Hello bhai, kya haal hai? Aaj tum kaise ho? Sab theek hai.",
+            condition_on_previous_text=False,
+            fp16=False # Prevents warnings on CPU execution
+        )
+        text = result["text"].strip()
+        return {"transcribed_text": text}
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)

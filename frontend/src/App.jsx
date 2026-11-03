@@ -15,6 +15,8 @@ import {
   RotateCcw,
   Sparkles,
   Languages,
+  Mic,
+  MicOff
 } from "lucide-react";
 import {
   Bar,
@@ -46,6 +48,7 @@ const navigation = [
   { label: "Overview", icon: LayoutDashboard, id: "dashboard" },
   { label: "Sentiment analyser", icon: MessageSquareText, id: "analyser" },
   { label: "Translation", icon: Languages, id: "translator" },
+  { label: 'Voice Notes', icon: Mic, id: 'voice' },
 ];
 
 
@@ -156,11 +159,10 @@ export default function App() {
             <span>Workspace</span>
             <ChevronRight size={14} />
             <strong>
-              {activeTab === "dashboard"
-                ? "Overview"
-                : activeTab === "analyser"
-                  ? "Sentiment analyser"
-                  : "Translation"}
+              {activeTab === "dashboard" ? "Overview" : 
+              activeTab === "analyser" ? "Sentiment analyser" : 
+              activeTab=== "translator" ? "Translation" : 
+              "Voice Notes"}
             </strong>
           </div>
           <div className="topbar-right">
@@ -186,6 +188,7 @@ export default function App() {
           />
         )}
         {activeTab === "translator" && <Translator />}
+        {activeTab === 'voice' && <VoiceAnalyser />}
       </main>
     </div>
   );
@@ -809,6 +812,198 @@ function Translator() {
               translates the contextual meaning into standard English, making
               downstream processing much easier.
             </p>
+          </article>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+
+function VoiceAnalyser() {
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [transcribedText, setTranscribedText] = useState('');
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('Ready to record');
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioBlob(blob);
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setTranscribedText('');
+      setResult(null);
+      setStatusMsg('Recording in progress...');
+    } catch (err) {
+      alert("Microphone access denied or unavailable.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      setStatusMsg('Audio captured. Ready to process.');
+    }
+  };
+
+  const processAudio = async () => {
+    if (!audioBlob) return;
+    setLoading(true);
+    setStatusMsg('Transcribing audio via Whisper...');
+    setResult(null);
+
+    try {
+      // 1. Transcribe the audio
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'voicenote.webm');
+      
+      const transcribeRes = await axios.post('http://127.0.0.1:8000/transcribe', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (transcribeRes.data.error) throw new Error(transcribeRes.data.error);
+      
+      const text = transcribeRes.data.transcribed_text;
+      setTranscribedText(text);
+      setStatusMsg('Analyzing sentiment and toxicity...');
+
+      // 2. Analyze the transcribed text
+      const analyzeRes = await axios.post('http://127.0.0.1:8000/predict', { text });
+      setResult(analyzeRes.data);
+      setStatusMsg('Analysis complete.');
+      
+    } catch (err) {
+      setStatusMsg('Error processing voice note. Is the backend running?');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetAll = () => {
+    setAudioBlob(null);
+    setTranscribedText('');
+    setResult(null);
+    setStatusMsg('Ready to record');
+  };
+
+  const sentimentTone = result?.sentiment?.toLowerCase();
+  const confidence = Number(result?.confidence_score);
+
+  return (
+    <div className="page-content analyser-page">
+      <section className="page-heading analyser-heading">
+        <div>
+          <p className="kicker"><span className="kicker-line" /> VOICE ANALYSER <span className="kicker-date">· WHISPER AI</span></p>
+          <h1>Speak <em>freely.</em></h1>
+          <p className="page-description">Record a Hinglish voice note. The model will transcribe and analyze it instantly.</p>
+        </div>
+        {(audioBlob || result) && !loading && !isRecording && (
+          <button className="quiet-button" onClick={resetAll}><RotateCcw size={15} /> Start over</button>
+        )}
+      </section>
+
+      <div className="analyser-layout">
+        <section className="panel analyser-card">
+          <div className="analyser-card-top">
+            <div>
+              <span className="step-label">01 <i /> AUDIO CAPTURE</span>
+              <h2>Record your message</h2>
+            </div>
+            <span className="language-tag">{statusMsg.toUpperCase()}</span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '10px', marginTop: '20px', marginBottom: '20px' }}>
+            {!isRecording ? (
+              <button 
+                className="primary-button" 
+                onClick={startRecording} 
+                style={{ backgroundColor: '#C8756D', color: '#fff' }}
+                disabled={loading}
+              >
+                <Mic size={16} /> Start Recording
+              </button>
+            ) : (
+              <button 
+                className="primary-button" 
+                onClick={stopRecording} 
+                style={{ backgroundColor: '#1A1D2D', border: '1px solid #C8756D' }}
+              >
+                <MicOff size={16} /> Stop Recording
+              </button>
+            )}
+            
+            {audioBlob && !isRecording && (
+              <button 
+                className="primary-button analyse-button" 
+                onClick={processAudio} 
+                disabled={loading}
+              >
+                {loading ? <><span className="button-spinner" /> Processing...</> : <>Transcribe & Analyse <ArrowUpRight size={16} /></>}
+              </button>
+            )}
+          </div>
+
+          {transcribedText && (
+            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#fcfbf9', border: '1px solid #e8e4da', borderRadius: '8px' }}>
+              <span style={{ fontSize: '10px', color: '#77796f', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>TRANSCRIBED TEXT</span>
+              <p style={{ margin: 0, fontSize: '14px', color: '#1A1D2D' }}>"{transcribedText}"</p>
+            </div>
+          )}
+
+          {result && (
+            <div className={`result-card result-${sentimentTone || 'neutral'}`} aria-live="polite">
+              <div className="result-symbol"><Check size={18} /></div>
+              <div className="result-copy">
+                <span>MODEL READ</span>
+                <h3>{result.sentiment || 'Unclassified'}</h3>
+                
+                <div style={{ display: 'flex', gap: '20px', marginTop: '12px', borderTop: '1px solid #e8e4da', paddingTop: '12px' }}>
+                  <div>
+                    <span style={{ fontSize: '10px', color: '#77796f', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CONFIDENCE</span>
+                    <strong style={{ fontSize: '14px' }}>{Number.isFinite(confidence) ? `${(confidence * 100).toFixed(2)}%` : 'N/A'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '10px', color: '#77796f', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>CONTENT FLAG</span>
+                    <strong style={{ 
+                      fontSize: '14px', 
+                      color: result.is_toxic ? '#C8756D' : '#4E8069',
+                      backgroundColor: result.is_toxic ? '#fdf2f2' : '#f0fdf4',
+                      padding: '2px 8px',
+                      borderRadius: '4px'
+                    }}>
+                      {result.is_toxic ? '⚠️ Toxic / Slang' : '✓ Clean'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <aside className="analyser-aside">
+          <article className="aside-note">
+            <div className="aside-icon"><Mic size={17} /></div>
+            <span className="aside-eyebrow">SPEECH TO TEXT</span>
+            <h3>Powered by Whisper.</h3>
+            <p>This tab uses OpenAI's Whisper model running locally to accurately capture Indian accents and Hinglish vocabulary before passing the text to your sentiment rules.</p>
           </article>
         </aside>
       </div>
