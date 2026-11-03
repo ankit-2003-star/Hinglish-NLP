@@ -6,7 +6,6 @@ import {
   BarChart3,
   Check,
   ChevronRight,
-  CircleHelp,
   Cpu,
   Database,
   Gauge,
@@ -16,7 +15,9 @@ import {
   Sparkles,
   Languages,
   Mic,
-  MicOff
+  MicOff,
+  FileText,
+  UploadCloud
 } from "lucide-react";
 import {
   Bar,
@@ -33,15 +34,15 @@ import {
 import "./App.css";
 
 const sentimentData = [
-  { name: "Positive", value: 4634, color: "#4E8069" },
-  { name: "Neutral", value: 5264, color: "#D5A458" },
-  { name: "Negative", value: 4102, color: "#C8756D" },
+  { name: "Positive", value: 166, color: "#4E8069" },
+  { name: "Neutral", value: 166, color: "#D5A458" },
+  { name: "Negative", value: 166, color: "#C8756D" },
 ];
+const sentimentTotal = sentimentData.reduce((total, item) => total + item.value, 0);
 
 const datasetData = [
-  { name: "Training", value: 14000 },
-  { name: "Validation", value: 3000 },
-  { name: "Testing", value: 3000 },
+  { name: "Training", value: 398 },
+  { name: "Testing", value: 100 },
 ];
 
 const navigation = [
@@ -49,6 +50,7 @@ const navigation = [
   { label: "Sentiment analyser", icon: MessageSquareText, id: "analyser" },
   { label: "Translation", icon: Languages, id: "translator" },
   { label: 'Voice Notes', icon: Mic, id: 'voice' },
+  { label: 'Chat Analyzer', icon: FileText, id: 'chat' },
 ];
 
 
@@ -92,10 +94,10 @@ export default function App() {
             <Activity size={19} strokeWidth={2.2} />
           </div>
           <div>
-            <p className="brand-name">
-              bol<span>.</span>
+            <p className="brand-name">HinglishSense</p>
+            <p className="brand-caption">
+              An Intelligent NLP System for Hinglish Text Analysis
             </p>
-            <p className="brand-caption">HINGLISH NLP STUDIO</p>
           </div>
         </div>
 
@@ -107,7 +109,6 @@ export default function App() {
             <span className="eyebrow">WORKSPACE</span>
             <strong>XLM-R · Local</strong>
           </div>
-          <ChevronRight className="workspace-chevron" size={16} />
         </div>
 
         <nav className="sidebar-nav" aria-label="Main navigation">
@@ -124,29 +125,14 @@ export default function App() {
               {id === "analyser" && <span className="nav-new">TRY</span>}
             </button>
           ))}
-          <span className="nav-section-label nav-section-spaced">Project</span>
-          <div className="project-note">
-            <span className="project-dot" />
-            <span>Sentiment classification</span>
-          </div>
         </nav>
 
         <div className="sidebar-bottom">
-          <div className="help-card">
-            <div className="help-icon">
-              <CircleHelp size={17} />
-            </div>
-            <div>
-              <strong>Need a hand?</strong>
-              <span>Explore your model setup</span>
-            </div>
-            <ArrowUpRight size={15} />
-          </div>
           <div className="profile">
-            <div className="avatar">HN</div>
+            <div className="avatar">A</div>
             <div className="profile-copy">
-              <strong>Hinglish NLP</strong>
-              <span>Research workspace</span>
+              <strong>HinglishSense</strong>
+              <span>Minor Project</span>
             </div>
             <span className="profile-menu">···</span>
           </div>
@@ -162,7 +148,8 @@ export default function App() {
               {activeTab === "dashboard" ? "Overview" : 
               activeTab === "analyser" ? "Sentiment analyser" : 
               activeTab=== "translator" ? "Translation" : 
-              "Voice Notes"}
+              activeTab === "voice" ? "Voice Notes" : 
+              "Chat Analyzer"}
             </strong>
           </div>
           <div className="topbar-right">
@@ -170,7 +157,7 @@ export default function App() {
               <i /> Model online
             </span>
             <span className="topbar-divider" />
-            <div className="top-avatar">HN</div>
+            <div className="top-avatar">A</div>
           </div>
         </header>
 
@@ -189,6 +176,7 @@ export default function App() {
         )}
         {activeTab === "translator" && <Translator />}
         {activeTab === 'voice' && <VoiceAnalyser />}
+        {activeTab === 'chat' && <ChatBatchAnalyzer />}
       </main>
     </div>
   );
@@ -223,21 +211,21 @@ function Dashboard({ onOpenAnalyser }) {
         <StatCard
           icon={<Database size={18} />}
           label="Dataset size"
-          value="20,000"
+          value="498"
           detail="tweets & sentences"
           tone="sage"
         />
         <StatCard
           icon={<Gauge size={18} />}
           label="Test accuracy"
-          value="69.77%"
+          value="89.00%"
           detail="XLM-RoBERTa V1 · held-out set"
           tone="gold"
         />
         <StatCard
           icon={<BarChart3 size={18} />}
           label="Macro F1"
-          value="70.15%"
+          value="88.38%"
           detail="across 3 sentiment classes"
           tone="coral"
         />
@@ -254,7 +242,7 @@ function Dashboard({ onOpenAnalyser }) {
         <article className="panel distribution-panel">
           <PanelHeading
             title="What’s in the training data"
-            subtitle="Sentiment labels · 14,000 training examples"
+            subtitle="Sentiment labels · 398 training examples"
             meta="01 / DATA"
           />
           <div className="distribution-content">
@@ -288,7 +276,7 @@ function Dashboard({ onOpenAnalyser }) {
                 </PieChart>
               </ResponsiveContainer>
               <div className="donut-label">
-                <strong>14k</strong>
+                <strong>398</strong>
                 <span>examples</span>
               </div>
             </div>
@@ -301,12 +289,12 @@ function Dashboard({ onOpenAnalyser }) {
                   </span>
                   <strong>{item.value.toLocaleString()}</strong>
                   <span className="legend-percent">
-                    {((item.value / 14000) * 100).toFixed(1)}%
+                    {((item.value / sentimentTotal) * 100).toFixed(2)}%
                   </span>
                 </div>
               ))}
               <div className="legend-footnote">
-                Labels are slightly weighted toward neutral.
+                Balanced across all three sentiment classes.
               </div>
             </div>
           </div>
@@ -315,7 +303,7 @@ function Dashboard({ onOpenAnalyser }) {
         <article className="panel splits-panel">
           <PanelHeading
             title="Dataset split"
-            subtitle="A 70 / 15 / 15 split across the full dataset"
+            subtitle="An 80 / 20 train-test split across the dataset"
             meta="02 / DATA"
           />
           <div className="split-chart">
@@ -341,7 +329,7 @@ function Dashboard({ onOpenAnalyser }) {
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: "#99998f", fontSize: 10 }}
-                  tickFormatter={(value) => `${value / 1000}k`}
+                  tickFormatter={(value) => Number(value).toLocaleString()}
                 />
                 <Tooltip
                   formatter={(value) => [
@@ -363,10 +351,13 @@ function Dashboard({ onOpenAnalyser }) {
           <div className="split-note">
             <span>
               <i />
-              20,000 records total
+              498 records total
             </span>
             <span>
-              Training set <b>70%</b>
+              Training set <b>80%</b>
+            </span>
+            <span>
+              Testing set <b>20%</b>
             </span>
           </div>
         </article>
@@ -421,7 +412,7 @@ function Dashboard({ onOpenAnalyser }) {
       </section>
       <footer className="page-footer">
         <span>
-          bol. <i>·</i> Hinglish NLP Studio
+          HinglishSense <i>·</i> Hinglish NLP Studio
         </span>
         <span>
           xlm-roberta-base <i>·</i> V1
@@ -637,7 +628,7 @@ function Analyser({
       </div>
       <footer className="page-footer">
         <span>
-          bol. <i>·</i> Hinglish NLP Studio
+          HinglishSense <i>·</i> Hinglish NLP Studio
         </span>
         <span>
           xlm-roberta-base <i>·</i> V1
@@ -655,9 +646,6 @@ function PanelHeading({ title, subtitle, meta }) {
         <h2>{title}</h2>
         <p>{subtitle}</p>
       </div>
-      <span className="panel-indicator">
-        <i />
-      </span>
     </div>
   );
 }
@@ -1005,6 +993,204 @@ function VoiceAnalyser() {
             <h3>Powered by Whisper.</h3>
             <p>This tab uses OpenAI's Whisper model running locally to accurately capture Indian accents and Hinglish vocabulary before passing the text to your sentiment rules.</p>
           </article>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+
+function ChatBatchAnalyzer() {
+  const [file, setFile] = useState(null);
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleFileUpload = async (event) => {
+    const uploadedFile = event.target.files[0];
+    if (!uploadedFile || !uploadedFile.name.endsWith('.txt')) {
+      alert("Please upload a valid WhatsApp .txt export file.");
+      return;
+    }
+    
+    setFile(uploadedFile);
+    setLoading(true);
+    setResult(null);
+
+    const formData = new FormData();
+    formData.append('file', uploadedFile);
+
+    try {
+      const response = await axios.post('http://127.0.0.1:8000/analyze-chat', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setResult(response.data);
+    } catch (err) {
+      alert("Error analyzing chat file. Make sure the backend is running.");
+      setFile(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetAll = () => {
+    setFile(null);
+    setResult(null);
+  };
+
+  return (
+    <div className="page-content analyser-page">
+      <section className="page-heading analyser-heading">
+        <div>
+          <p className="kicker"><span className="kicker-line" /> BATCH PROCESSING <span className="kicker-date">· LOCAL API</span></p>
+          <h1>Read the <em>room.</em></h1>
+          <p className="page-description">Upload a WhatsApp .txt export. The model will parse and map the overall sentiment.</p>
+        </div>
+        {result && !loading && (
+          <button className="quiet-button" onClick={resetAll}><RotateCcw size={15} /> Start over</button>
+        )}
+      </section>
+
+      <div className="analyser-layout">
+        <section className="panel analyser-card">
+          <div className="analyser-card-top">
+            <div>
+              <span className="step-label">01 <i /> CHAT EXPORT</span>
+              <h2>Upload WhatsApp File</h2>
+            </div>
+            <span className="language-tag">.TXT ONLY</span>
+          </div>
+          
+          {!result && !loading && (
+            <div style={{ border: '2px dashed #e8e4da', borderRadius: '8px', padding: '40px 20px', textAlign: 'center', marginTop: '20px', backgroundColor: '#fcfbf9' }}>
+              <UploadCloud size={32} color="#77796f" style={{ margin: '0 auto 12px' }} />
+              <h3 style={{ fontSize: '15px', marginBottom: '8px' }}>Drag and drop your chat file</h3>
+              <p style={{ fontSize: '13px', color: '#77796f', marginBottom: '16px' }}>Export chat from WhatsApp (without media) and upload here.</p>
+              <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#1A1D2D', color: '#fff', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                <FileText size={16} /> Select .txt File
+                <input type="file" accept=".txt" style={{ display: 'none' }} onChange={handleFileUpload} />
+              </label>
+            </div>
+          )}
+
+          {loading && (
+            <div style={{ textAlign: 'center', padding: '40px 20px', marginTop: '20px' }}>
+              <span className="button-spinner" style={{ borderColor: '#1A1D2D', borderTopColor: 'transparent', width: '24px', height: '24px', margin: '0 auto 12px', display: 'block' }} />
+              <p style={{ fontSize: '14px', fontWeight: 'bold' }}>Translating and Summarizing chat log...</p>
+            </div>
+          )}
+
+          {result && (
+            <div style={{ marginTop: '20px' }}>
+              
+              {/* TOP STATS */}
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+                <div style={{ flex: 1, backgroundColor: '#fcfbf9', border: '1px solid #e8e4da', padding: '16px', borderRadius: '8px' }}>
+                  <span style={{ fontSize: '10px', color: '#77796f', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>MESSAGES FOUND</span>
+                  <strong style={{ fontSize: '18px' }}>{result.total_found.toLocaleString()}</strong>
+                </div>
+                <div style={{ flex: 1, backgroundColor: '#fcfbf9', border: '1px solid #e8e4da', padding: '16px', borderRadius: '8px' }}>
+                  <span style={{ fontSize: '10px', color: '#77796f', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>SAMPLED FOR ANALYSIS</span>
+                  <strong style={{ fontSize: '18px' }}>{result.analyzed}</strong>
+                </div>
+              </div>
+
+              {/* GRAPH & LEGEND SIDE BY SIDE */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', backgroundColor: '#fffefa', padding: '16px', borderRadius: '8px', border: '1px solid #e8e4da' }}>
+                <div style={{ height: '180px', width: '180px', flexShrink: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={result.distribution} innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
+                        {result.distribution.map((item) => <Cell key={item.name} fill={item.color} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ background: '#fffefa', border: '1px solid #e8e4da', borderRadius: 10, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="legend-list" style={{ flex: 1 }}>
+                  {result.distribution.map((item) => (
+                    <div className="legend-row" key={item.name}>
+                      <span className="legend-name"><i style={{ backgroundColor: item.color }} />{item.name}</span>
+                      <strong>{item.value}</strong>
+                      <span className="legend-percent">{((item.value / result.analyzed) * 100).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* MESSAGE LOG (ORIGINAL & TRANSLATED) */}
+              <div style={{ marginTop: '32px' }}>
+                <h3 style={{ fontSize: '13px', color: '#77796f', borderBottom: '1px solid #e8e4da', paddingBottom: '8px', marginBottom: '16px' }}>MESSAGE LOG</h3>
+                <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '8px' }}>
+                  {result.chat_details.map((msg, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '16px', backgroundColor: '#fcfbf9', padding: '12px', borderRadius: '8px', border: '1px solid #e8e4da' }}>
+                      
+                      {/* 1. Original text with native browser tooltip for slang */}
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: '10px', color: '#77796f', fontWeight: 'bold' }}>ORIGINAL HINGLISH</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 0 0' }}>
+                          <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.5' }}>{msg.original}</p>
+                          
+                          {msg.has_slang && (
+                            <span 
+                              title="Slang detected in this message"
+                              style={{ 
+                                backgroundColor: '#C8756D', color: '#fff', borderRadius: '50%', 
+                                width: '14px', height: '14px', display: 'inline-flex', 
+                                alignItems: 'center', justifyContent: 'center', fontSize: '10px', 
+                                fontWeight: 'bold', cursor: 'help', flexShrink: 0
+                              }}
+                            >
+                              !
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* 2. English translation */}
+                      <div style={{ flex: 1, borderLeft: '1px solid #e8e4da', paddingLeft: '16px' }}>
+                        <span style={{ fontSize: '10px', color: '#77796f', fontWeight: 'bold' }}>ENGLISH TRANSLATION</span>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', lineHeight: '1.5' }}>{msg.translated}</p>
+                      </div>
+                      
+                      {/* 3. Standard sentiment badge */}
+                      <div style={{ width: '60px', textAlign: 'right' }}>
+                        <span style={{ 
+                          fontSize: '9px', fontWeight: 'bold',
+                          color: msg.sentiment === 'Negative' ? '#C8756D' : msg.sentiment === 'Positive' ? '#4E8069' : '#D5A458',
+                          backgroundColor: msg.sentiment === 'Negative' ? '#fdf2f2' : msg.sentiment === 'Positive' ? '#f0fdf4' : '#fdf8f0',
+                          padding: '2px 6px', borderRadius: '4px'
+                        }}>
+                          {msg.sentiment.toUpperCase()}
+                        </span>
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )}
+        </section>
+
+        <aside className="analyser-aside">
+          <article className="aside-note">
+            <div className="aside-icon"><FileText size={17} /></div>
+            <span className="aside-eyebrow">BATCH PROCESSING</span>
+            <h3>Analyze the collective.</h3>
+            <p>Export any WhatsApp group chat (Settings {'>'} More {'>'} Export Chat) and upload the `.txt` file here. The system maps the mood and lists the translations.</p>
+          </article>
+          
+          {/* DYNAMIC AI SUMMARY BOX */}
+          {result && result.summary && (
+            <article className="aside-note" style={{ marginTop: '16px', backgroundColor: '#f0fdf4', borderColor: '#4E8069' }}>
+              <div className="aside-icon" style={{ backgroundColor: '#4E8069', color: '#fff' }}><Sparkles size={17} /></div>
+              <span className="aside-eyebrow" style={{ color: '#4E8069' }}>AI SUMMARY</span>
+              <h3 style={{ color: '#1A1D2D' }}>Conversation gist</h3>
+              <p style={{ color: '#1A1D2D', lineHeight: '1.5', fontSize: '14px' }}>{result.summary}</p>
+            </article>
+          )}
         </aside>
       </div>
     </div>
